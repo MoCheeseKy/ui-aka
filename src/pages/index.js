@@ -103,9 +103,13 @@ const runIterative = (arr) => {
 };
 
 const runRecursive = (arr, index) => {
-  if (index === arr.length) return 1;
-  if (index >= arr.length) return 1;
-  return arr[index] * runRecursive(arr, index + 1);
+  if (index === arr.length) {
+    return 1;
+  } else if (index >= arr.length) {
+    return 1;
+  } else {
+    return arr[index] * runRecursive(arr, index + 1);
+  }
 };
 
 const VoucherCard = ({ voucher, isSelected, onToggle }) => (
