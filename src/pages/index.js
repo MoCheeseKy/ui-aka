@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   LineChart,
   Line,
@@ -10,461 +10,710 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import {
-  Play,
-  RefreshCw,
-  BarChart2,
-  Layers,
-  AlertTriangle,
+  ShoppingBag,
+  Ticket,
+  CreditCard,
+  TrendingDown,
   Zap,
-  Box,
-  Timer,
+  AlertTriangle,
+  Activity,
+  Check,
+  Plus,
+  Minus,
+  RefreshCw,
+  ShoppingCart,
 } from 'lucide-react';
 
-const Card = ({ children, title, icon: Icon, className = '' }) => (
+const DUMMY_PRODUCTS = [
+  {
+    id: 1,
+    name: 'Mechanical Keyboard Keychron K2',
+    price: 1250000,
+    image:
+      'https://images.unsplash.com/photo-1595225476474-87563907a212?w=300&h=300&fit=crop',
+  },
+  {
+    id: 2,
+    name: 'Logitech MX Master 3S',
+    price: 1549000,
+    image:
+      'https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=300&h=300&fit=crop',
+  },
+  {
+    id: 3,
+    name: 'Sony WH-1000XM5 Headphones',
+    price: 4999000,
+    image:
+      'https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=300&h=300&fit=crop',
+  },
+  {
+    id: 4,
+    name: 'Monitor LG UltraGear 27"',
+    price: 3800000,
+    image:
+      'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=300&h=300&fit=crop',
+  },
+];
+
+const DUMMY_VOUCHERS = [
+  {
+    id: 'v1',
+    code: 'HEMAT10',
+    desc: 'Diskon 10% Semua Item',
+    multiplier: 0.9,
+    color: 'indigo',
+  },
+  {
+    id: 'v2',
+    code: 'ONGKIR5',
+    desc: 'Diskon Ekstra 5% (Tumpuk)',
+    multiplier: 0.95,
+    color: 'blue',
+  },
+  {
+    id: 'v3',
+    code: 'FLASH20',
+    desc: 'Flash Sale 20% Off',
+    multiplier: 0.8,
+    color: 'rose',
+  },
+  {
+    id: 'v4',
+    code: 'MEMBER2',
+    desc: 'Diskon Member 2%',
+    multiplier: 0.98,
+    color: 'emerald',
+  },
+];
+
+const formatRupiah = (number) => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+  }).format(number);
+};
+
+const runIterative = (arr) => {
+  let result = 1;
+  for (let value of arr) {
+    result *= value;
+  }
+  return result;
+};
+
+const runRecursive = (arr, index) => {
+  if (index === arr.length) return 1;
+  if (index >= arr.length) return 1;
+  return arr[index] * runRecursive(arr, index + 1);
+};
+
+const VoucherCard = ({ voucher, isSelected, onToggle }) => (
   <div
-    className={`bg-white rounded-2xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] border border-gray-100 flex flex-col ${className}`}
+    onClick={() => onToggle(voucher.id)}
+    className={`relative flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 group overflow-hidden ${
+      isSelected
+        ? `border-${voucher.color}-500 bg-${voucher.color}-50/50 shadow-sm`
+        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+    }`}
   >
-    {title && (
-      <div className='flex items-center gap-3 mb-6 pb-3 border-b border-gray-100'>
-        <div className='p-2 bg-indigo-50 text-indigo-600 rounded-lg'>
-          <Icon size={20} />
-        </div>
-        <h2 className='text-lg font-bold text-gray-800'>{title}</h2>
-      </div>
-    )}
-    {children}
+    <div
+      className={`p-3 rounded-full mr-4 bg-${voucher.color}-100 text-${voucher.color}-600 group-hover:scale-110 transition-transform`}
+    >
+      <Ticket size={20} />
+    </div>
+    <div className='flex-grow'>
+      <h3 className='font-bold text-gray-800 flex items-center gap-2'>
+        {voucher.code}
+        {isSelected && (
+          <Check size={16} className={`text-${voucher.color}-600`} />
+        )}
+      </h3>
+      <p className='text-sm text-gray-500'>{voucher.desc}</p>
+    </div>
+    <div className='text-right'>
+      <span className={`font-bold text-lg text-${voucher.color}-600`}>
+        {Math.round((1 - voucher.multiplier) * 100)}% OFF
+      </span>
+    </div>
+    <div
+      className={`absolute -right-6 -bottom-6 text-${voucher.color}-100/50 opacity-20 pointer-events-none transform rotate-12`}
+    >
+      <Ticket size={80} />
+    </div>
   </div>
 );
 
-export default function ModernAlgorithmBenchmark() {
-  const [inputSize, setInputSize] = useState('');
-  const [benchmarkSizes, setBenchmarkSizes] = useState('');
-  const [generatedArray, setGeneratedArray] = useState([]);
-  const [singleResult, setSingleResult] = useState(null);
+export default function EcommerceVoucherStacking() {
+  const [cart, setCart] = useState([DUMMY_PRODUCTS[0]]);
+  const [selectedVoucherIds, setSelectedVoucherIds] = useState([]);
+  const [baseTotal, setBaseTotal] = useState(0);
+  const [finalTotal, setFinalTotal] = useState(0);
+  const [totalMultiplier, setTotalMultiplier] = useState(1);
+
   const [chartData, setChartData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
+  const [isBenchmarking, setIsBenchmarking] = useState(false);
+  const [benchmarkError, setBenchmarkError] = useState('');
+  const [showBenchmark, setShowBenchmark] = useState(false);
 
-  const runIterative = (arr) => {
-    let result = 1;
-    for (let value of arr) {
-      result *= value;
-    }
-    return result;
-  };
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-  const runRecursive = (arr, index) => {
-    if (index === arr.length) return 1;
-    return arr[index] * runRecursive(arr, index + 1);
-  };
+  useEffect(() => {
+    const newBaseTotal = cart.reduce((sum, item) => sum + item.price, 0);
+    setBaseTotal(newBaseTotal);
 
-  const generateRandomArray = (size) => {
-    return Array.from(
-      { length: size },
-      () => Math.floor(Math.random() * 5) + 1
+    const activeMultipliers = DUMMY_VOUCHERS.filter((v) =>
+      selectedVoucherIds.includes(v.id)
+    ).map((v) => v.multiplier);
+
+    const combinedMultiplier = runIterative(activeMultipliers);
+
+    setTotalMultiplier(combinedMultiplier);
+    setFinalTotal(newBaseTotal * combinedMultiplier);
+  }, [cart, selectedVoucherIds]);
+
+  const toggleVoucher = (id) => {
+    setSelectedVoucherIds((prev) =>
+      prev.includes(id) ? prev.filter((vId) => vId !== id) : [...prev, id]
     );
   };
 
-  const handleGenerateArray = () => {
-    const size = parseInt(inputSize);
-    if (isNaN(size) || size <= 0) {
-      setErrorMsg('Masukkan jumlah data yang valid > 0');
-      return;
-    }
-    const arr = generateRandomArray(size);
-    setGeneratedArray(arr);
-    setSingleResult(null);
-    setErrorMsg('');
+  const addToCart = (product) => {
+    setCart([...cart, product]);
   };
 
-  const handleRunSingle = (type) => {
-    setErrorMsg('');
-    let arrToUse = generatedArray;
-    let currentSize = generatedArray.length;
-
-    if (currentSize === 0) {
-      const size = parseInt(inputSize);
-      if (isNaN(size) || size <= 0) {
-        setErrorMsg('Masukkan jumlah data untuk generate otomatis.');
-        return;
-      }
-      arrToUse = generateRandomArray(size);
-      setGeneratedArray(arrToUse);
-      currentSize = size;
-    }
-
-    let res;
-    const iterations = 500;
-
-    try {
-      const start = performance.now();
-
-      if (type === 'iterative') {
-        for (let i = 0; i < iterations; i++) {
-          res = runIterative(arrToUse);
-        }
-      } else {
-        if (currentSize > 7000)
-          throw new Error(
-            'Ukuran array terlalu besar untuk Rekursif (Potensi Stack Overflow)'
-          );
-        for (let i = 0; i < iterations; i++) {
-          res = runRecursive(arrToUse, 0);
-        }
-      }
-
-      const end = performance.now();
-      const avgTimeMs = (end - start) / iterations;
-
-      setSingleResult({
-        type: type === 'iterative' ? 'Iteratif' : 'Rekursif',
-        result: res,
-        time: avgTimeMs.toFixed(5),
-        size: currentSize,
-      });
-    } catch (err) {
-      setErrorMsg(err.message);
-      setSingleResult(null);
-    }
+  const removeFromCart = (indexToRemove) => {
+    setCart(cart.filter((_, index) => index !== indexToRemove));
   };
 
-  const handleRunBenchmark = async () => {
-    setIsLoading(true);
-    setErrorMsg('');
-    setSingleResult(null);
-
-    const sizes = benchmarkSizes
-      .split(',')
-      .map((s) => parseInt(s.trim()))
-      .filter((n) => !isNaN(n) && n > 0);
-
-    if (sizes.length === 0) {
-      setErrorMsg('Masukkan setidaknya satu ukuran data untuk benchmark.');
-      setIsLoading(false);
+  const handleRunVoucherStressTest = useCallback(async () => {
+    if (selectedVoucherIds.length === 0) {
+      setBenchmarkError(
+        'Pilih setidaknya satu voucher untuk melakukan stress test.'
+      );
       return;
     }
+    setIsBenchmarking(true);
+    setBenchmarkError('');
+    setChartData([]);
 
+    const activeMultipliersBase = DUMMY_VOUCHERS.filter((v) =>
+      selectedVoucherIds.includes(v.id)
+    ).map((v) => v.multiplier);
+
+    const sizes = [10, 100, 1000, 5000, 8000];
     const newChartData = [];
+    const iterations = 200;
 
     setTimeout(() => {
       try {
         for (let size of sizes) {
-          const arr = generateRandomArray(size);
-          const iterations = 500;
+          const largeVoucherArray = Array.from(
+            { length: size },
+            (_, i) => activeMultipliersBase[i % activeMultipliersBase.length]
+          );
 
           const iterStart = performance.now();
-          for (let i = 0; i < iterations; i++) runIterative(arr);
+          for (let i = 0; i < iterations; i++) runIterative(largeVoucherArray);
           const iterEnd = performance.now();
           const iterAvgTime = (iterEnd - iterStart) / iterations;
 
-          let recAvgTime = 0;
+          let recAvgTime = null;
           if (size <= 7000) {
             const recStart = performance.now();
-            for (let i = 0; i < iterations; i++) runRecursive(arr, 0);
+            for (let i = 0; i < iterations; i++)
+              runRecursive(largeVoucherArray, 0);
             const recEnd = performance.now();
             recAvgTime = (recEnd - recStart) / iterations;
-          } else {
-            recAvgTime = null;
           }
 
           newChartData.push({
             name: size,
-            iterative: iterAvgTime.toFixed(5),
-            recursive: recAvgTime !== null ? recAvgTime.toFixed(5) : null,
+            iterative: iterAvgTime.toFixed(4),
+            recursive: recAvgTime !== null ? recAvgTime.toFixed(4) : null,
           });
         }
         setChartData(newChartData);
       } catch (err) {
-        setErrorMsg('Benchmark Error: ' + err.message);
+        setBenchmarkError('Stress Test Error: ' + err.message);
       } finally {
-        setIsLoading(false);
+        setIsBenchmarking(false);
       }
-    }, 300);
+    }, 100);
+  }, [selectedVoucherIds]);
+
+  const handlePayment = () => {
+    if (cart.length === 0) {
+      alert('Keranjang belanja masih kosong! Pilih produk dulu.');
+      return;
+    }
+
+    setIsProcessingPayment(true);
+
+    setTimeout(() => {
+      setIsProcessingPayment(false);
+      setShowSuccessModal(true);
+    }, 1500);
+  };
+
+  const resetTransaction = () => {
+    setCart([]);
+    setSelectedVoucherIds([]);
+    setShowSuccessModal(false);
+    setChartData([]);
   };
 
   return (
-    <div className='min-h-screen bg-gray-50 p-6 md:p-8 font-sans text-gray-800 antialiased'>
-      <header className='max-w-7xl mx-auto mb-8 text-center md:text-left md:flex justify-between items-end'>
-        <div>
-          <h1 className='text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-500'>
-            JS Array Multiplication
-          </h1>
-          <p className='text-gray-500 mt-2 text-lg'>
-            Analisis Performa:{' '}
-            <span className='font-medium text-indigo-600'>Iteratif</span> vs{' '}
-            <span className='font-medium text-rose-500'>Rekursif</span>
-          </p>
+    <div className='min-h-screen bg-gray-100 font-sans text-gray-800'>
+      <header className='bg-white shadow-sm sticky top-0 z-10'>
+        <div className='max-w-7xl mx-auto px-4 py-4 flex justify-between items-center'>
+          <div className='flex items-center gap-2'>
+            <ShoppingBag className='text-indigo-600 ' size={28} />
+            <h1 className='text-xl font-extrabold tracking-tight text-gray-900'>
+              Pavilion <span className='text-indigo-600'>ID</span>
+            </h1>
+          </div>
+          <div className='flex items-center gap-4'>
+            <div className='relative p-2 bg-gray-100 rounded-full text-gray-600'>
+              <ShoppingCart size={20} />
+              {cart.length > 0 && (
+                <span className='absolute top-0 right-0 -mt-1 -mr-1 bg-indigo-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-white'>
+                  {cart.length}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       </header>
 
-      {errorMsg && (
-        <div className='max-w-7xl mx-auto mb-6 bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-lg text-rose-700 flex items-start gap-3 animate-fade-in-down'>
-          <AlertTriangle className='shrink-0 mt-0.5' size={20} />
-          <p className='font-medium'>{errorMsg}</p>
-        </div>
-      )}
-
-      <main className='max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8'>
-        <div className='lg:col-span-4 flex flex-col gap-8'>
-          <Card title='Konfigurasi Data' icon={Box}>
-            <div className='mb-5'>
-              <label className='block text-sm font-semibold text-gray-600 mb-2'>
-                Jumlah Elemen Array (N)
-              </label>
-              <div className='relative'>
-                <input
-                  type='number'
-                  value={inputSize}
-                  onChange={(e) => setInputSize(e.target.value)}
-                  placeholder='Contoh: 100'
-                  className='w-full pl-4 pr-12 py-3 rounded-xl border-2 border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all outline-none font-medium'
+      <main className='max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4'>
+        <div className='lg:col-span-2 space-y-6'>
+          <h2 className='text-xl font-bold text-gray-800 flex items-center gap-2'>
+            <ShoppingBag className='text-gray-500' size={24} /> Produk Tersedia
+          </h2>
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+            {DUMMY_PRODUCTS.map((product) => (
+              <div
+                key={product.id}
+                className='bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex hover:shadow-md transition-shadow'
+              >
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  className='w-32 h-32 object-cover'
                 />
-                <div className='absolute right-4 top-3.5 text-gray-400 font-medium text-sm'>
-                  items
+                <div className='p-4 flex flex-col justify-between flex-grow'>
+                  <div>
+                    <h3 className='font-bold text-gray-800 line-clamp-1'>
+                      {product.name}
+                    </h3>
+                    <p className='text-indigo-600 font-bold mt-1'>
+                      {formatRupiah(product.price)}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => addToCart(product)}
+                    className='mt-3 w-full py-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors'
+                  >
+                    <Plus size={16} /> Tambah ke Keranjang
+                  </button>
                 </div>
               </div>
-            </div>
+            ))}
+          </div>
 
+          <div className='mt-10 bg-white rounded-2xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] border border-gray-100 relative overflow-hidden'>
+            <div className='absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-rose-500'></div>
             <button
-              onClick={handleGenerateArray}
-              className='w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm hover:shadow-md'
+              onClick={() => setShowBenchmark(!showBenchmark)}
+              className='w-full flex justify-between items-center mb-4 focus:outline-none group'
             >
-              <RefreshCw
-                size={18}
-                className={isLoading ? 'animate-spin' : ''}
-              />{' '}
-              Generate Array Baru
+              <div className='flex items-center gap-3'>
+                <div className='p-2 bg-indigo-50 text-indigo-600 rounded-lg group-hover:bg-indigo-100 transition-colors'>
+                  <Activity size={20} />
+                </div>
+                <div className='text-left'>
+                  <h2 className='text-lg font-bold text-gray-800'>
+                    Voucher System Stress Test
+                  </h2>
+                  <p className='text-sm text-gray-500 hidden md:block'>
+                    Analisis performa kalkulasi jika voucher yang dipilih
+                    ditumpuk ribuan kali.
+                  </p>
+                </div>
+              </div>
+              <div
+                className={`transform transition-transform duration-200 ${
+                  showBenchmark ? 'rotate-180' : ''
+                }`}
+              >
+                <TrendingDown size={20} className='text-gray-400' />
+              </div>
             </button>
 
-            <div
-              className={`mt-6 p-4 bg-gray-100 rounded-xl border border-gray-200 transition-all ${
-                generatedArray.length ? 'opacity-100' : 'opacity-50 grayscale'
-              }`}
-            >
-              <div className='flex justify-between items-center mb-2'>
-                <span className='text-xs font-bold uppercase text-gray-500 tracking-wider'>
-                  Data Preview
-                </span>
-                <span className='text-xs font-medium px-2 py-1 bg-gray-200 rounded-full text-gray-600'>
-                  Size: {generatedArray.length || 0}
-                </span>
-              </div>
-              <div className='h-24 overflow-y-auto text-sm font-mono text-gray-600 break-all bg-white p-2 rounded-lg shadow-inner'>
-                {generatedArray.length > 0 ? (
-                  `[${generatedArray.slice(0, 50).join(', ')}${
-                    generatedArray.length > 50 ? '...' : ''
-                  }]`
-                ) : (
-                  <span className='text-gray-400 italic'>
-                    Belum ada data. Klik generate.
-                  </span>
-                )}
-              </div>
-            </div>
-          </Card>
+            {showBenchmark && (
+              <div className='animate-fade-in-down'>
+                <p className='text-sm text-gray-600 mb-4'>
+                  Fitur ini akan menggunakan jenis voucher yang sedang Anda
+                  pilih di keranjang, lalu mensimulasikan perhitungan jika
+                  voucher tersebut ditumpuk dalam jumlah ekstrem (N) menggunakan
+                  metode Iteratif vs Rekursif.
+                </p>
 
-          <Card title='Uji Coba Manual' icon={Zap}>
-            <p className='text-sm text-gray-500 mb-4'>
-              Jalankan satu kali pengujian pada data yang aktif.
-            </p>
-            <div className='grid grid-cols-2 gap-3 mb-6'>
-              <button
-                onClick={() => handleRunSingle('iterative')}
-                className='group bg-white border-2 border-indigo-100 hover:border-indigo-500 hover:bg-indigo-50 text-indigo-700 font-semibold py-3 px-4 rounded-xl flex flex-col items-center justify-center gap-1 transition-all'
-              >
-                <Layers
-                  size={20}
-                  className='text-indigo-500 group-hover:scale-110 transition-transform'
-                />
-                <span>Run Iteratif</span>
-              </button>
-              <button
-                onClick={() => handleRunSingle('recursive')}
-                className='group bg-white border-2 border-rose-100 hover:border-rose-500 hover:bg-rose-50 text-rose-700 font-semibold py-3 px-4 rounded-xl flex flex-col items-center justify-center gap-1 transition-all'
-              >
-                <RefreshCw
-                  size={20}
-                  className='text-rose-500 group-hover:rotate-180 transition-transform duration-500'
-                />
-                <span>Run Rekursif</span>
-              </button>
-            </div>
-
-            {singleResult && (
-              <div className='bg-gradient-to-br from-gray-50 to-white p-5 rounded-xl border border-gray-200 shadow-sm animate-fade-in-up'>
-                <div className='flex items-center justify-between mb-3'>
-                  <span
-                    className={`font-bold px-3 py-1 rounded-full text-sm ${
-                      singleResult.type === 'Iteratif'
-                        ? 'bg-indigo-100 text-indigo-700'
-                        : 'bg-rose-100 text-rose-700'
-                    }`}
-                  >
-                    {singleResult.type}
-                  </span>
-                  <span className='text-gray-500 text-sm font-medium flex items-center gap-1'>
-                    <Timer size={14} /> {singleResult.time} ms
-                  </span>
-                </div>
-                <div className='space-y-1'>
-                  <p className='text-sm text-gray-500 flex justify-between'>
-                    <span>Input Size:</span>{' '}
-                    <span className='font-medium text-gray-800'>
-                      {singleResult.size}
-                    </span>
-                  </p>
-                  <div className='text-sm text-gray-500'>
-                    <span className='block mb-1'>Result:</span>
-                    <div className='w-full p-2 bg-gray-100 rounded-lg font-mono text-gray-800 text-xs truncate border border-gray-200'>
-                      {singleResult.result}
-                    </div>
+                {benchmarkError && (
+                  <div className='mb-4 bg-rose-50 border-l-4 border-rose-500 p-3 rounded-r-lg text-rose-700 flex items-start gap-2 text-sm'>
+                    <AlertTriangle className='shrink-0 mt-0.5' size={16} />
+                    <p>{benchmarkError}</p>
                   </div>
+                )}
+
+                <button
+                  onClick={handleRunVoucherStressTest}
+                  disabled={isBenchmarking || selectedVoucherIds.length === 0}
+                  className='mb-6 w-full bg-gradient-to-r from-indigo-600 to-indigo-800 hover:from-indigo-700 hover:to-indigo-900 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm disabled:opacity-70'
+                >
+                  {isBenchmarking ? (
+                    <Zap size={18} className='animate-spin' />
+                  ) : (
+                    <Activity size={18} />
+                  )}
+                  {isBenchmarking
+                    ? 'Sedang Melakukan Stress Test...'
+                    : 'Jalankan Stress Test (Iteratif vs Rekursif)'}
+                </button>
+
+                <div className='h-[350px] relative bg-gray-50 rounded-xl border border-gray-100 p-4'>
+                  {chartData.length > 0 ? (
+                    <ResponsiveContainer width='100%' height='100%'>
+                      <LineChart
+                        data={chartData}
+                        margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray='3 3'
+                          stroke='#e5e7eb'
+                          vertical={false}
+                        />
+                        <XAxis
+                          dataKey='name'
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fontSize: 11, fill: '#6b7280' }}
+                          label={{
+                            value: 'Jumlah Voucher Ditumpuk (N)',
+                            position: 'insideBottom',
+                            offset: -15,
+                            fill: '#4b5563',
+                            fontSize: 12,
+                          }}
+                        />
+                        <YAxis
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fontSize: 11, fill: '#6b7280' }}
+                          label={{
+                            value: 'Waktu Komputasi (ms)',
+                            angle: -90,
+                            position: 'insideLeft',
+                            fill: '#4b5563',
+                            fontSize: 12,
+                          }}
+                        />
+                        <Tooltip
+                          cursor={{
+                            stroke: '#6366f1',
+                            strokeWidth: 1,
+                            strokeDasharray: '4 4',
+                          }}
+                          contentStyle={{
+                            borderRadius: '12px',
+                            border: 'none',
+                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                          }}
+                          formatter={(value) => [`${value} ms`]}
+                        />
+                        <Legend
+                          verticalAlign='top'
+                          height={36}
+                          iconType='circle'
+                          wrapperStyle={{ fontSize: '12px' }}
+                        />
+                        <Line
+                          type='monotone'
+                          dataKey='iterative'
+                          name='Iteratif (Loop)'
+                          stroke='#4f46e5'
+                          strokeWidth={3}
+                          dot={{ r: 3, fill: 'white' }}
+                          activeDot={{ r: 6 }}
+                        />
+                        <Line
+                          type='monotone'
+                          dataKey='recursive'
+                          name='Rekursif (Fungsi)'
+                          stroke='#f43f5e'
+                          strokeWidth={3}
+                          dot={{ r: 3, fill: 'white' }}
+                          activeDot={{ r: 6 }}
+                          connectNulls={true}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className='absolute inset-0 flex flex-col items-center justify-center text-gray-400'>
+                      <Zap size={40} className='text-gray-300 mb-2' />
+                      <p className='text-sm font-medium'>
+                        Pilih voucher & jalankan test.
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <div className='mt-3 text-xs text-center text-gray-500 bg-indigo-50/50 py-2 rounded-lg px-2'>
+                  <span className='font-bold text-indigo-700'>Catatan:</span>{' '}
+                  Pada N=8000, metode Rekursif sengaja dihentikan (null) untuk
+                  mencegah crash browser (Stack Overflow). Ini menunjukkan
+                  keterbatasan memori metode rekursif pada data besar.
                 </div>
               </div>
             )}
-          </Card>
+          </div>
         </div>
 
-        <div className='lg:col-span-8'>
-          <Card
-            title='Benchmark & Visualisasi Grafik'
-            icon={BarChart2}
-            className='h-full'
-          >
-            <div className='flex flex-col md:flex-row gap-3 mb-6 items-end'>
-              <div className='flex-grow'>
-                <label className='block text-sm font-semibold text-gray-600 mb-2'>
-                  Titik Uji Benchmark (N)
-                </label>
-                <input
-                  type='text'
-                  value={benchmarkSizes}
-                  onChange={(e) => setBenchmarkSizes(e.target.value)}
-                  placeholder='Contoh: 10, 100, 1000'
-                  className='w-full pl-4 py-3 rounded-xl border-2 border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all outline-none text-sm font-mono'
-                />
+        <div className='lg:col-span-1'>
+          <div className='sticky top-24 space-y-6 max-h-[calc(100vh-6rem)] overflow-y-auto pr-2 pb-10 custom-scrollbar'>
+            <div className='bg-white rounded-2xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] border border-gray-100'>
+              <h2 className='text-xl font-bold text-gray-800 mb-4 flex items-center gap-2'>
+                <CreditCard className='text-gray-500' size={24} /> Ringkasan
+                Belanja
+              </h2>
+
+              <div className='mb-6 max-h-48 overflow-y-auto pr-2 space-y-3 custom-scrollbar'>
+                {cart.length === 0 ? (
+                  <p className='text-gray-400 italic text-sm text-center py-4'>
+                    Keranjang kosong
+                  </p>
+                ) : (
+                  cart.map((item, index) => (
+                    <div
+                      key={index}
+                      className='flex items-center justify-between bg-gray-50 p-2 rounded-lg text-sm'
+                    >
+                      <div className='flex items-center gap-2 overflow-hidden'>
+                        <img
+                          src={item.image}
+                          className='w-8 h-8 rounded object-cover shrink-0'
+                          alt=''
+                        />
+                        <span className='truncate text-gray-700 font-medium'>
+                          {item.name}
+                        </span>
+                      </div>
+                      <div className='flex items-center gap-3 ml-2 shrink-0'>
+                        <span className='text-gray-600'>
+                          {formatRupiah(item.price)}
+                        </span>
+                        <button
+                          onClick={() => removeFromCart(index)}
+                          className='text-gray-400 hover:text-rose-500 transition-colors'
+                        >
+                          <Minus
+                            size={14}
+                            className='bg-white rounded-full border border-gray-200 p-0.5 sm:p-1 box-content'
+                          />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
+
+              <div className='space-y-3 border-t border-gray-100 pt-4'>
+                <div className='flex justify-between text-gray-600'>
+                  <span>Total Harga ({cart.length} barang)</span>
+                  <span className='font-medium'>{formatRupiah(baseTotal)}</span>
+                </div>
+
+                {selectedVoucherIds.length > 0 && (
+                  <div className='bg-indigo-50 rounded-lg p-3 text-sm animate-fade-in-up'>
+                    <div className='flex justify-between items-center text-indigo-700 font-medium mb-1'>
+                      <span className='flex items-center gap-1'>
+                        <Ticket size={14} /> Voucher Bertumpuk:
+                      </span>
+                      <span>{selectedVoucherIds.length}x</span>
+                    </div>
+                    <div className='text-xs font-mono text-indigo-600/80 break-all bg-indigo-100/50 p-2 rounded border border-indigo-100'>
+                      Total Pengali ={' '}
+                      <span className='font-bold'>
+                        {totalMultiplier.toFixed(4)}
+                      </span>
+                    </div>
+                    <div className='flex justify-between text-indigo-700 font-bold mt-2'>
+                      <span>Total Hemat</span>
+                      <span>- {formatRupiah(baseTotal - finalTotal)}</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className='flex justify-between text-lg font-extrabold text-gray-900 pt-2 border-t border-gray-100 align-baseline'>
+                  <span>Total Tagihan</span>
+                  <span className='text-2xl text-indigo-600'>
+                    {formatRupiah(finalTotal)}
+                  </span>
+                </div>
+              </div>
+
               <button
-                onClick={handleRunBenchmark}
-                disabled={isLoading}
-                className='md:w-auto w-full bg-gray-800 hover:bg-gray-900 text-white font-semibold py-3 px-6 rounded-xl flex items-center justify-center gap-3 transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed h-[50px]'
+                onClick={handlePayment}
+                disabled={isProcessingPayment || cart.length === 0}
+                className='w-full bg-gray-900 hover:bg-gray-800 disabled:bg-gray-400 text-white font-bold py-4 px-6 rounded-xl mt-6 transition-all flex items-center justify-center gap-2 text-lg shadow-lg hover:shadow-xl transform active:scale-95'
               >
-                {isLoading ? (
+                {isProcessingPayment ? (
                   <>
-                    <RefreshCw size={18} className='animate-spin' />{' '}
+                    <RefreshCw size={20} className='animate-spin' />{' '}
                     Memproses...
                   </>
                 ) : (
                   <>
-                    <Play size={18} className='fill-current' /> Jalankan
-                    Benchmark
+                    <CreditCard size={20} /> Bayar Sekarang
                   </>
                 )}
               </button>
             </div>
 
-            <div className='flex-grow min-h-[450px] relative bg-gradient-to-b from-white to-gray-50 rounded-xl border border-gray-100 p-4'>
-              {chartData.length > 0 ? (
-                <ResponsiveContainer width='100%' height='100%'>
-                  <LineChart
-                    data={chartData}
-                    margin={{ top: 20, right: 30, left: 10, bottom: 25 }}
-                  >
-                    <CartesianGrid
-                      strokeDasharray='3 3'
-                      stroke='#e5e7eb'
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey='name'
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 12, fill: '#6b7280' }}
-                      label={{
-                        value: 'Ukuran Data (N)',
-                        position: 'insideBottom',
-                        offset: -20,
-                        fill: '#4b5563',
-                        fontSize: 13,
-                        fontWeight: 500,
-                      }}
-                    />
-                    <YAxis
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 12, fill: '#6b7280' }}
-                      label={{
-                        value: 'Rata-rata Waktu (ms)',
-                        angle: -90,
-                        position: 'insideLeft',
-                        offset: 0,
-                        fill: '#4b5563',
-                        fontSize: 13,
-                        fontWeight: 500,
-                      }}
-                    />
-                    <Tooltip
-                      cursor={{
-                        stroke: '#6366f1',
-                        strokeWidth: 1,
-                        strokeDasharray: '4 4',
-                      }}
-                      contentStyle={{
-                        backgroundColor: '#fff',
-                        borderRadius: '12px',
-                        border: 'none',
-                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                      }}
-                      itemStyle={{ padding: '4px 0' }}
-                      formatter={(value, name) => [`${value} ms`, name]}
-                    />
-                    <Legend verticalAlign='top' height={40} iconType='circle' />
-                    <Line
-                      type='monotone'
-                      dataKey='iterative'
-                      name='Iteratif (Loop)'
-                      stroke='#4f46e5'
-                      strokeWidth={3}
-                      dot={{ r: 4, strokeWidth: 2, fill: 'white' }}
-                      activeDot={{ r: 8, strokeWidth: 0, fill: '#4f46e5' }}
-                      animationDuration={1500}
-                    />
-                    <Line
-                      type='monotone'
-                      dataKey='recursive'
-                      name='Rekursif (Fungsi)'
-                      stroke='#f43f5e'
-                      strokeWidth={3}
-                      dot={{ r: 4, strokeWidth: 2, fill: 'white' }}
-                      activeDot={{ r: 8, strokeWidth: 0, fill: '#f43f5e' }}
-                      animationDuration={1500}
-                      connectNulls={true}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className='absolute inset-0 flex flex-col items-center justify-center text-gray-400'>
-                  <div className='p-6 bg-gray-100 rounded-full mb-4'>
-                    <BarChart2 size={48} className='text-gray-300' />
-                  </div>
-                  <h3 className='text-lg font-semibold text-gray-600'>
-                    Belum ada data benchmark
-                  </h3>
-                  <p className='text-sm max-w-xs text-center mt-2'>
-                    Masukkan ukuran data di atas dan klik {'Jalankan Benchmark'}
-                    untuk melihat visualisasi.
-                  </p>
-                </div>
-              )}
+            <div className='space-y-4'>
+              <h3 className='font-bold text-gray-700 flex items-center gap-2 px-1'>
+                <TrendingDown className='text-gray-500' size={20} /> Gunakan
+                Voucher Hemat
+              </h3>
+              <p className='text-sm text-gray-500 px-1 -mt-2 mb-4'>
+                Klik voucher untuk menumpuk diskon!
+              </p>
+              <div className='space-y-3'>
+                {DUMMY_VOUCHERS.map((voucher) => (
+                  <VoucherCard
+                    key={voucher.id}
+                    voucher={voucher}
+                    isSelected={selectedVoucherIds.includes(voucher.id)}
+                    onToggle={toggleVoucher}
+                  />
+                ))}
+              </div>
             </div>
-            <div className='mt-4 text-xs text-center text-gray-500 bg-indigo-50 py-2 rounded-lg'>
-              <span className='font-bold text-indigo-700'>Info Teknis:</span>{' '}
-              Waktu yang ditampilkan adalah rata-rata (ms) dari 500x eksekusi
-              per ukuran data.
-            </div>
-          </Card>
+          </div>
         </div>
       </main>
+
+      {showSuccessModal && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in'>
+          <div className='bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all scale-100 animate-bounce-in'>
+            <div className='bg-gradient-to-br from-emerald-500 to-teal-600 p-6 text-center text-white relative overflow-hidden'>
+              <div className='absolute top-0 left-0 w-full h-full bg-white/10 opacity-30 pattern-dots'></div>
+              <div className='bg-white/20 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-md shadow-inner'>
+                <Check
+                  size={40}
+                  className='text-white drop-shadow-md'
+                  strokeWidth={3}
+                />
+              </div>
+              <h2 className='text-2xl font-extrabold tracking-tight'>
+                Pembayaran Berhasil!
+              </h2>
+              <p className='text-emerald-50 opacity-90 text-sm mt-1'>
+                Terima kasih telah berbelanja di Pavilion ID
+              </p>
+            </div>
+
+            <div className='p-8'>
+              <div className='space-y-4 mb-8'>
+                <div className='flex justify-between text-gray-500 text-sm border-b border-gray-100 pb-2'>
+                  <span>Metode Pembayaran</span>
+                  <span className='font-medium text-gray-800'>
+                    QRIS / E-Wallet
+                  </span>
+                </div>
+                <div className='flex justify-between items-center'>
+                  <span className='text-gray-600'>Total Harga Awal</span>
+                  <span className='font-semibold text-gray-800 line-through decoration-rose-500 decoration-2'>
+                    {formatRupiah(baseTotal)}
+                  </span>
+                </div>
+                <div className='flex justify-between items-center text-emerald-600 bg-emerald-50 p-3 rounded-lg border border-emerald-100'>
+                  <span className='flex items-center gap-2 font-medium'>
+                    <Ticket size={16} /> Hemat (
+                    {Math.round((1 - totalMultiplier) * 100)}%)
+                  </span>
+                  <span className='font-bold'>
+                    - {formatRupiah(baseTotal - finalTotal)}
+                  </span>
+                </div>
+                <div className='flex justify-between items-end pt-2 border-t-2 border-dashed border-gray-200'>
+                  <span className='text-gray-800 font-bold text-lg'>
+                    Total Dibayar
+                  </span>
+                  <span className='text-3xl font-black text-gray-900 tracking-tight'>
+                    {formatRupiah(finalTotal)}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={resetTransaction}
+                className='w-full bg-gray-900 hover:bg-black text-white font-bold py-3.5 px-6 rounded-xl transition-transform transform hover:-translate-y-0.5 shadow-lg active:scale-95 flex items-center justify-center gap-2'
+              >
+                Belanja Lagi <ShoppingBag size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: rgba(156, 163, 175, 0.5);
+            border-radius: 20px;
+            border: 3px solid transparent;
+            background-clip: content-box;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(107, 114, 128, 0.8);
+        }
+        .animate-fade-in-up {
+            animation: fadeInUp 0.5s ease-out;
+        }
+        .animate-fade-in-down {
+            animation: fadeInDown 0.5s ease-out;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInDown {
+             from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes bounceIn {
+            0% { opacity: 0; transform: scale(0.9); }
+            70% { transform: scale(1.02); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        .animate-bounce-in {
+            animation: bounceIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }
