@@ -66,7 +66,7 @@ const DUMMY_VOUCHERS = [
   {
     id: 'v2',
     code: 'ONGKIR5',
-    desc: 'Diskon Ekstra 5% (Tumpuk)',
+    desc: 'Diskon Ekstra 5%',
     multiplier: 0.95,
     color: 'blue',
   },
